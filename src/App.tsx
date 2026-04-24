@@ -2,15 +2,45 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 function Visualizer({ isPlaying }: { isPlaying: boolean }) {
   return (
-    <div className="flex gap-0.5 items-end h-4 w-4">
-      {[1, 2, 3].map((i) => (
+    <div className="flex gap-0.75 items-end h-5 w-6">
+      {[1, 2, 3, 4, 5].map((i) => (
         <div 
           key={i} 
-          className={`w-1 bg-[#38bdf8] rounded-full transition-all duration-300 ${isPlaying ? 'animate-music-bar' : 'h-1'}`}
-          style={{ animationDelay: `${i * 0.2}s` }}
+          className={`w-1 bg-[#38bdf8] rounded-full transition-all duration-300 ${isPlaying ? 'animate-music-bar' : 'h-1 opacity-50'}`}
+          style={{ 
+            animationDelay: `${i * 0.15}s`,
+            animationDuration: `${0.5 + Math.random() * 0.5}s`
+          }}
         />
       ))}
     </div>
+  );
+}
+
+function HeartAnimation({ isSaved }: { isSaved: boolean }) {
+  return (
+    <AnimatePresence mode="wait">
+      {isSaved ? (
+        <motion.div
+          key="saved"
+          initial={{ scale: 0.5, rotate: -20, opacity: 0 }}
+          animate={{ scale: 1, rotate: 0, opacity: 1 }}
+          exit={{ scale: 1.5, opacity: 0 }}
+          className="text-red-500"
+        >
+          <Heart size={18} fill="currentColor" />
+        </motion.div>
+      ) : (
+        <motion.div
+          key="unsaved"
+          initial={{ scale: 1.2, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="text-slate-400"
+        >
+          <Heart size={18} />
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -52,34 +82,40 @@ function SkeletonCard() {
   );
 }
 
-function SongCard({ song, isSaved, onToggleSave, onClick }: { song: SongMetadata; isSaved: boolean; onToggleSave: () => void; onClick: () => void }) {
-  const [imgSrc, setImgSrc] = useState(`https://i.ytimg.com/vi/${song.videoId}/maxresdefault.jpg`);
-  const [fallbackIndex, setFallbackIndex] = useState(0);
-  const [hasError, setHasError] = useState(false);
+const PLACEHOLDER_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230f172a'/%3E%3Cpath d='M50 30v25c-2-1-4.5-2-7.5-2-5.5 0-10 4.5-10 10s4.5 10 10 10 10-4.5 10-10V40h15v10c-2-1-4.5-2-7.5-2-5.5 0-10 4.5-10 10s4.5 10 10 10 10-4.5 10-10v-20H50z' fill='%2338bdf8' fill-opacity='0.4'/%3E%3C/svg%3E";
 
+function SafeImage({ videoId, className, alt = "Music Thumbnail", isBackground = false }: { videoId: string, className?: string, alt?: string, isBackground?: boolean }) {
   const fallbacks = [
-    `https://i.ytimg.com/vi/${song.videoId}/maxresdefault.jpg`,
-    `https://i.ytimg.com/vi/${song.videoId}/hqdefault.jpg`,
-    `https://i.ytimg.com/vi/${song.videoId}/mqdefault.jpg`,
-    `https://img.youtube.com/vi/${song.videoId}/hqdefault.jpg`
+    `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
+    `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+    `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`,
+    `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+    PLACEHOLDER_IMAGE
   ];
 
+  const [index, setIndex] = useState(0);
+
   useEffect(() => {
-    setImgSrc(fallbacks[0]);
-    setFallbackIndex(0);
-    setHasError(false);
-  }, [song.videoId]);
+    setIndex(0);
+  }, [videoId]);
 
-  const handleError = () => {
-    if (fallbackIndex < fallbacks.length - 1) {
-      const nextIndex = fallbackIndex + 1;
-      setFallbackIndex(nextIndex);
-      setImgSrc(fallbacks[nextIndex]);
-    } else {
-      setHasError(true);
-    }
-  };
+  return (
+    <img 
+      src={fallbacks[index]} 
+      alt={alt}
+      loading="lazy"
+      onError={() => {
+        if (index < fallbacks.length - 1) {
+          setIndex(index + 1);
+        }
+      }}
+      className={`${className} transition-opacity duration-300 ${isBackground ? 'opacity-40' : ''}`}
+      referrerPolicy="no-referrer"
+    />
+  );
+}
 
+function SongCard({ song, isSaved, onToggleSave, onClick }: { song: SongMetadata; isSaved: boolean; onToggleSave: () => void; onClick: () => void }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -90,19 +126,10 @@ function SongCard({ song, isSaved, onToggleSave, onClick }: { song: SongMetadata
       onClick={onClick}
     >
       <div className="aspect-square rounded-[32px] overflow-hidden relative bg-slate-900 border border-white/[0.05] shadow-2xl transition-all duration-500 group-hover:shadow-[#38bdf8]/20 group-hover:border-[#38bdf8]/40">
-        {!hasError ? (
-          <img 
-            src={imgSrc} 
-            loading="lazy"
-            onError={handleError}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
-            referrerPolicy="no-referrer"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
-            <Music size={48} className="text-slate-700" />
-          </div>
-        )}
+        <SafeImage 
+          videoId={song.videoId} 
+          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+        />
         
         {/* Play Overlay */}
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-[2px]">
@@ -121,7 +148,7 @@ function SongCard({ song, isSaved, onToggleSave, onClick }: { song: SongMetadata
           onClick={(e) => { e.stopPropagation(); onToggleSave(); }}
           className="absolute top-4 right-4 p-2.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-white hover:scale-110 active:scale-95 transition-all opacity-0 group-hover:opacity-100 z-10"
         >
-          <Heart size={18} fill={isSaved ? "#ef4444" : "none"} className={isSaved ? "text-red-500" : ""} />
+          <HeartAnimation isSaved={isSaved} />
         </button>
       </div>
 
@@ -384,26 +411,13 @@ export default function App() {
               className="bg-[#1e293b]/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-3 flex items-center gap-4 shadow-2xl cursor-pointer group"
             >
               <div className="relative w-12 h-12 shrink-0 rounded-lg overflow-hidden">
-                <img 
-                  src={activeSong.image} 
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    if (target.src.includes('hqdefault')) {
-                      target.src = target.src.replace('hqdefault', 'mqdefault');
-                    } else if (target.src.includes('mqdefault')) {
-                      target.src = target.src.replace('mqdefault', 'default');
-                    }
-                  }}
+                <SafeImage 
+                  videoId={activeSong.videoId} 
                   className="w-full h-full object-cover" 
-                  referrerPolicy="no-referrer"
                 />
                 {isPlaying && (
-                   <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                      <div className="flex gap-0.5 items-end h-3">
-                         <div className="w-0.5 bg-[#38bdf8] animate-[bounce_0.6s_ease-in-out_infinite]" />
-                         <div className="w-0.5 bg-[#38bdf8] animate-[bounce_0.8s_ease-in-out_infinite]" />
-                         <div className="w-0.5 bg-[#38bdf8] animate-[bounce_0.5s_ease-in-out_infinite]" />
-                      </div>
+                   <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
+                      <Visualizer isPlaying={isPlaying} />
                    </div>
                 )}
               </div>
@@ -586,18 +600,10 @@ export default function App() {
             >
               {/* Player / Image Side */}
               <div className="w-full md:w-[450px] lg:w-[500px] h-[300px] md:h-full relative shrink-0 overflow-hidden">
-                <img 
-                  src={selectedSong.image} 
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    if (target.src.includes('hqdefault')) {
-                      target.src = target.src.replace('hqdefault', 'mqdefault');
-                    } else if (target.src.includes('mqdefault')) {
-                      target.src = target.src.replace('mqdefault', 'default');
-                    }
-                  }}
-                  className="absolute inset-0 w-full h-full object-cover scale-150 blur-3xl opacity-40" 
-                  referrerPolicy="no-referrer"
+                <SafeImage 
+                  videoId={selectedSong.videoId} 
+                  isBackground={true}
+                  className="absolute inset-0 w-full h-full object-cover scale-150 blur-3xl" 
                 />
                 
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-gradient-to-t from-[#020617] via-transparent to-[#020617]/40">
@@ -608,18 +614,9 @@ export default function App() {
                    >
                       <div className="absolute inset-0 bg-[#38bdf8]/20 blur-3xl rounded-full animate-pulse" />
                       <div className="relative p-1.5 rounded-full bg-gradient-to-tr from-[#38bdf8] via-blue-500 to-purple-600 shadow-2xl">
-                        <img 
-                          src={selectedSong.image} 
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            if (target.src.includes('hqdefault')) {
-                              target.src = target.src.replace('hqdefault', 'mqdefault');
-                            } else if (target.src.includes('mqdefault')) {
-                              target.src = target.src.replace('mqdefault', 'default');
-                            }
-                          }}
+                        <SafeImage 
+                          videoId={selectedSong.videoId} 
                           className="w-48 h-48 rounded-full object-cover border-4 border-[#020617]" 
-                          referrerPolicy="no-referrer"
                         />
                       </div>
                    </motion.div>
@@ -668,8 +665,8 @@ export default function App() {
                      </div>
                    </div>
                    <div className="flex items-center gap-6">
-                     <button onClick={() => toggleSave(selectedSong)} className="text-slate-400 hover:text-red-500 transition-all active:scale-125">
-                        <Heart size={20} fill={savedSongs.some(s => s.id === selectedSong.id) ? "#ef4444" : "none"} className={savedSongs.some(s => s.id === selectedSong.id) ? "text-red-500" : ""} />
+                     <button onClick={() => toggleSave(selectedSong)} className="transition-all active:scale-125">
+                        <HeartAnimation isSaved={savedSongs.some(s => s.id === selectedSong.id)} />
                      </button>
                      <button onClick={() => setSelectedSong(null)} className="hidden md:block text-slate-400 hover:text-white transition-colors">
                         <X size={24} />
@@ -684,13 +681,27 @@ export default function App() {
                         <span className="text-[11px] uppercase font-black tracking-[0.3em] text-slate-700">Syncing Lyrics...</span>
                       </div>
                     ) : (
-                      <div className="max-w-2xl mx-auto space-y-4 pb-12">
+                      <motion.div 
+                        initial="hidden"
+                        animate="visible"
+                        variants={{
+                          visible: { transition: { staggerChildren: 0.05 } }
+                        }}
+                        className="max-w-2xl mx-auto space-y-4 pb-12"
+                      >
                          {lyrics?.split('\n').map((line, i) => (
-                           <p key={i} className="text-lg md:text-xl font-bold text-slate-300 hover:text-white transition-all cursor-default border-l-4 border-transparent hover:border-[#38bdf8]/50 pl-6 py-1 leading-relaxed">
+                           <motion.p 
+                             key={i} 
+                             variants={{
+                               hidden: { opacity: 0, x: -10 },
+                               visible: { opacity: 1, x: 0 }
+                             }}
+                             className="text-lg md:text-xl font-bold text-slate-300 hover:text-white transition-all cursor-default border-l-4 border-transparent hover:border-[#38bdf8]/50 pl-6 py-1 leading-relaxed"
+                           >
                             {line || <br />}
-                           </p>
+                           </motion.p>
                          ))}
-                      </div>
+                      </motion.div>
                     )}
                  </div>
               </div>

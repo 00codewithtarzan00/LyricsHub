@@ -98,9 +98,16 @@ export const geminiService = {
   async getLyrics(songName: string, artist: string): Promise<string> {
     const response = await ai.models.generateContent({
       model: "gemini-3.1-pro-preview",
-      contents: `Retrieve the lyrics for "${songName}" by "${artist}". CRITICAL: Do NOT translate the lyrics to English meaning. Instead, provide the lyrics in their original language (Hindi, Punjabi, etc.) but written ENTIRELY in the Roman/Latin script (English letters/transliteration). For example, if the lyric is 'तुम ही हो', write 'Tum hi ho'. Format the output as clean text with line breaks.`,
+      contents: `Retrieve the lyrics for "${songName}" by "${artist}". 
+      
+      RULES:
+      1. Provide ONLY Romanized (Latin script) lyrics.
+      2. Do NOT translate the meaning.
+      3. Use strictly one line of Romanized text per line of original lyrics.
+      4. Ensure accurate line-breaks between verses and chorus for high readability.
+      5. Do not include any headers like [Verse 1] or [Chorus].`,
       config: {
-        systemInstruction: "You are a specialized music lyrics transliteration engine. You take songs in Hindi, Punjabi, or other Indian languages and write them out using English letters (Romanization). You NEVER translate the meaning; you only change the script from Devanagari/Gurmukhi to Roman script."
+        systemInstruction: "You are a professional music transliteration engine. You convert Indian language songs (Hindi, Punjabi, etc.) into Roman script (English letters) while preserving the exact rhythmic structure and line breaks of the original song. Never translate; only transliterate."
       }
     });
 
